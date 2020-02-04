@@ -1,13 +1,18 @@
 EXE_TARGET = sqrlback
-DEFAULT_TARGET = target/debug/$(EXE_TARGET)
+BUILD_PATH = target
+STAGE = debug
+DEFAULT_TARGET = $(BUILD_PATH)/$(STAGE)/$(EXE_TARGET)
 SOURCE_FILES = $(git ls-files -- src/)
 
 # all: $(DEFAULT_TARGET)
 
 .PHONY: build clean test
 
-target/debug/$(EXE_TARGET): $(SOURCE_FILES)
+$(DEFAULT_TARGET): $(SOURCE_FILES)
 	cargo build
+
+build:
+	cargo clean
 
 clean:
 	cargo clean
