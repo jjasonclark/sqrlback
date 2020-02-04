@@ -12,7 +12,7 @@ $(DEFAULT_TARGET): $(SOURCE_FILES)
 	cargo build
 
 build:
-	cargo clean
+	cargo build
 
 clean:
 	cargo clean
