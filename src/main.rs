@@ -78,13 +78,12 @@ async fn main() {
 
     let schema = Schema::new(Query, Mutation);
     let state = warp::any().map(move || Context {}).boxed();
-    let graphql_route = warp::path("graphql").and(juniper_warp::make_graphql_filter(schema, state));
-    let playground_route = warp::path("graphql")
-        .and(warp::get2())
-        .and(juniper_warp::playground_filter("/graphql"));
-    let root_route = warp::get2()
-        .and(warp::path::end())
-        .map(|| warp::reply::html(index_view().unwrap()));
+    let graphql_route = warp::path("graphql").and(
+        warp::get2()
+            .and(juniper_warp::playground_filter("/graphql"))
+            .or(juniper_warp::make_graphql_filter(schema, state)),
+    );
+    let root_route = warp::path::end().map(|| warp::reply::html(index_view().unwrap()));
 
     let sqrl_routes = warp::path("sqrl").and(warp::post2()).map(|| "sqrl!");
 
@@ -92,7 +91,6 @@ async fn main() {
         sqrl_routes
             .or(root_route)
             .or(graphql_route)
-            .or(playground_route)
             .with(warp_logger),
     )
     .run(addr);
