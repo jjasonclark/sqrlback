@@ -2,8 +2,19 @@
 extern crate config;
 extern crate juniper;
 extern crate log;
+extern crate rustache;
+extern crate serde;
+use rustache::{HashBuilder, Render, RustacheError};
 use std::env;
 use warp::Filter;
+
+#[derive(Debug, serde::Serialize)]
+struct BaseUrls {
+    cps: String,
+    login: String,
+    poll: String,
+    success: String,
+}
 
 struct Query;
 struct Mutation;
@@ -35,6 +46,24 @@ fn load_config() -> Result<config::Config, config::ConfigError> {
     Ok(settings)
 }
 
+fn index_view() -> Result<String, RustacheError> {
+    let buj = BaseUrls {
+        cps: "https://cps".to_owned(),
+        login: "https://login".to_owned(),
+        poll: "https://poll".to_owned(),
+        success: "https://success".to_owned(),
+    };
+    let data = HashBuilder::new()
+        .insert("baseUrlsJson", serde_json::to_string(&buj).unwrap())
+        .insert("baseUrl", "https://baseUrl")
+        .insert("nutJson", r#"{"nut":"","code":""}"#);
+    let mut body = std::io::Cursor::new(Vec::new());
+    let template = std::include_str!("./views/index.mustache");
+    data.render(template, &mut body)?;
+    let vec = body.into_inner();
+    Ok(String::from_utf8(vec).unwrap())
+}
+
 #[tokio::main]
 async fn main() {
     if env::var("RUST_LOG").is_err() {
@@ -55,7 +84,7 @@ async fn main() {
         .and(juniper_warp::playground_filter("/graphql"));
     let root_route = warp::get2()
         .and(warp::path::end())
-        .map(|| warp::reply::html("<html><body><a href=\"/graphql\">Graphql</a></body></html>"));
+        .map(|| warp::reply::html(index_view().unwrap()));
 
     let sqrl_routes = warp::path("sqrl").and(warp::post2()).map(|| "sqrl!");
 

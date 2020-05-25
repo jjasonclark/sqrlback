@@ -1,6 +1,12 @@
 {
-    "server": {
-      "address": "127.0.0.1",
-      "port": 3000
-    }
+  "server": {
+    "address": "127.0.0.1",
+    "port": 3000
+  },
+  "client": {
+    "cps": "http://localhost:25519/",
+    "login": "sqrl://example.com/sqrl?nut=",
+    "poll": "https://example.com/authenticate?code=",
+    "success": "/loggedin"
   }
+}

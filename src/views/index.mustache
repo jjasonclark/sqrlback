@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>SQRLBack</title>
+    <style>
+      #sqrlLink {
+        display: flex;
+        margin: 0.8rem;
+        padding: 0.1rem;
+        background-color: #007CC3;
+        border: 2px solid black;
+        text-decoration: none;
+        align-items: center;
+        border-radius: 0.3rem;
+        width: fit-content;
+      }
+
+      #sqrlLink > img {
+        width: 2rem;
+        margin-right: 0.3rem
+      }
+
+      #sqrlLink > span {
+        color: white;
+        margin-right: 0.1rem;
+        font-weight: 600;
+        font-family: serif;
+      }
+
+      #sqrlqr {
+        width: 350px;
+      }
+
+      #sqrlPolling {
+        display: none;
+      }
+
+      .sqrlpolldisplay {
+        diplay: flex;
+        flex-display: flex-end;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Demonstration site for SQRL login</h1>
+    <div>
+      <p>Sample workflow for a website</p>
+      <ol>
+        <li>Register a new account</li>
+        <li>Associate a SQRL identity with the account</li>
+        <li>Logout</li>
+        <li>Login in with SQRL</li>
+      </ol>
+    </div>
+    <h2>Register<h2>
+    <div class="create">
+      <form method="post" action="{{{baseUrl}}}/register">
+        <input type="submit" value="Create account" />
+      </form>
+    </div>
+    <h2>Login to created account</h2>
+    <div class="login">
+      <a id="sqrlLink" onclick="startCpsPolling()"><img src="{{{baseUrl}}}/SQRL_icon_vector_outline.svg"><span>Sign in with SQRL</span></a>
+      <div id="sqrlPolling">
+        <div class="sqrlpolldisplay">
+          <span id="sqrlpolldisplay"></span><button onclick="stopPolling()">Stop polling</button>
+        </div>
+        <div id="sqrlqr"></div>
+      </div>
+    </div>
+    <script crossorigin src="https://unpkg.com/qrjs2@0.1.7/js/qrjs2.js"></script>
+    <script crossorigin src="https://unpkg.com/unfetch/polyfill"></script>
+    <script>
+      var nut = {{{nutJson}}};
+      var baseUrls = {{{baseUrlsJson}}};
+      var urls = null;
+      var pollingFinished = false;
+
+      function base64Encode(what) {
+        return window.btoa(what).replace(/\//g, "_").replace(/\+/g, "-").replace(/=+$/, "");
+      }
+
+      function makeUrls(base) {
+        return {
+          cps: base.cps + base64Encode(base.login + nut.nut),
+          login: base.login + nut.nut,
+          poll: base.poll + nut.code,
+          success: baseUrls.success
+        };
+      };
+
+      function stopPolling() {
+        pollingFinished = true;
+      }
+
+      // Poll for login via a different device
+      function pollLogin(pollCount) {
+        console.log('Starting polling for logged in %s', urls.poll);
+        if(pollingFinished || pollCount < 0) {
+          console.log('Stopping polling');
+          document.getElementById('sqrlpolldisplay').innerText = "0";
+          return;
+        }
+        document.getElementById('sqrlpolldisplay').innerText = pollCount.toString();
+        return fetch(urls.poll)
+          .then(function(res) {
+            if(res.status >= 200 && res.status <= 399)  {
+              console.log('Navigating to %s', urls.success);
+              window.location.assign(urls.success);
+            } else {
+              setTimeout(pollLogin, 1000, pollCount - 1);
+            }
+          })
+          .catch(function(error) {
+            console.error(error);
+            setTimeout(pollLogin, 1000, pollCount - 1);
+          });
+      }
+
+      function createCpsTestUrl() {
+        var result = baseUrls.cps + Date.now() + '.gif';
+        console.log('Creating image check url of %s', result);
+        return result;
+      }
+
+      function checkCps(cpsUrl) {
+        console.log('CPS polling starting for %s', cpsUrl);
+        var img = new Image();
+        img.onload = function() {
+          console.log('CPS found. Navigating to %s', cpsUrl);
+          window.location.assign(cpsUrl);
+        };
+        img.onerror = function() {
+          console.log('Error response from image check');
+          var sqrlQrSvg = QRCode.generateSVG(urls.login);
+          document.getElementById('sqrlqr').appendChild(sqrlQrSvg);
+          document.getElementById('sqrlPolling').style.display = "block";
+          pollLogin(60);
+        };
+        img.src = createCpsTestUrl();
+        return true;
+      }
+
+      function startCpsPolling() {
+        setTimeout(checkCps, 1000, urls.cps); // wait 1 second to check CPS
+      }
+
+      function startup() {
+        urls = makeUrls(baseUrls);
+        document.getElementById('sqrlLink').href += urls.login + '&CPS';
+      }
+
+      setTimeout(startup, 100);
+    </script>
+  </body>
+</html>
